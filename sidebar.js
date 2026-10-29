@@ -1,14 +1,18 @@
-(() => {
+/** Mounts responsive navigation with injected browser dependencies.
+ * @param {{document: Document, runtime: import('./ports.js').RuntimePort}} dependencies
+ * @returns {void}
+ */
+export function mountSidebar({document,runtime}) {
   const sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
   const toggle = sidebar.querySelector('.sidebar-toggle');
   const opener = document.querySelector('.sidebar-open');
   const backdrop = document.querySelector('.sidebar-backdrop');
   const links = [...sidebar.querySelectorAll('.sidebar-link')];
-  const mobile = matchMedia('(max-width:1000px)');
+  const mobile = runtime.matchMedia('(max-width:1000px)');
   const storageKey = 'dotaguide-sidebar-collapsed';
   let collapsed = false;
-  try { collapsed = localStorage.getItem(storageKey) === 'true'; } catch {}
+  try { collapsed = runtime.storage.getItem(storageKey) === 'true'; } catch {}
   function renderCollapsed() {
     document.body.classList.toggle('sidebar-collapsed', collapsed);
     toggle.setAttribute('aria-expanded', String(!collapsed));
@@ -28,7 +32,7 @@
   toggle.addEventListener('click', () => {
     collapsed = !collapsed;
     renderCollapsed();
-    try { localStorage.setItem(storageKey, String(collapsed)); } catch {}
+    try { runtime.storage.setItem(storageKey, String(collapsed)); } catch {}
   });
   opener.addEventListener('click', () => drawer(true));
   sidebar.querySelector('.sidebar-close').addEventListener('click', () => drawer(false, true));
@@ -62,23 +66,23 @@
       else link.removeAttribute('aria-current');
     });
   }
-  const guide = location.pathname.endsWith('/guide.html');
+  const guide = runtime.location.pathname.endsWith('/guide.html');
   function hashActive() {
-    const hash = location.hash.slice(1);
+    const hash = runtime.location.hash.slice(1);
     markActive(guide ? (['heroes','shop'].includes(hash) ? hash : 'roles') : (['map','tips'].includes(hash) ? hash : 'basics'));
   }
   hashActive();
-  addEventListener('hashchange', hashActive);
-  if (!guide && 'IntersectionObserver' in window) {
+  runtime.on('hashchange', hashActive);
+  if (!guide) {
     const visible = new Map();
-    const observer = new IntersectionObserver(entries => {
+    const observer = runtime.observe(entries => {
       entries.forEach(entry => visible.set(entry.target.id, entry.isIntersecting));
       const section = ['basics','map','tips'].find(id => visible.get(id));
       if (section) markActive(section);
     }, {rootMargin: '-82px 0px -45% 0px', threshold: 0});
-    ['basics','map','tips'].forEach(id => observer.observe(document.getElementById(id)));
+    ['basics','map','tips'].forEach(id => observer?.observe(document.getElementById(id)));
   }
   mobile.addEventListener('change', () => drawer(false));
   renderCollapsed();
   drawer(false);
-})();
+}
